@@ -1,0 +1,744 @@
+{ 
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Cloudformation stack for the demo environments",
+
+  "Parameters" : {
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription" : "must be the name of an existing EC2 KeyPair."
+    },
+    "Environment" : {
+        "Description" : "Name of the environment this VPS is for, e.g dev",
+        "Type": "String"
+    },
+    "CreatedBy": {
+        "Description": "Name of the person or process which created these resources",
+        "Type": "String",
+        "Default": "Unknown"
+    },
+     "InternalCidr": {
+      "Description": "The internal Cidr for the VPC",
+      "Type": "String"
+    },
+    "ExternalCidr": {
+      "Description": "The external network to allow inbound traffic from",
+      "Type": "String"
+    },
+    "StandardInstanceType": {
+      "Description": "The type of instance to run the standard EC2 machines in",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues" : [ "t2.micro", "t2.small", "t2.medium", 
+                          "m3.medium", "m3.large", "m3.xlarge", "m3.2xlarge",
+                          "c4.large", "c4.xlarge", "c4.2xlarge", "cv.4xlarge", "c4.8xlarge",
+                          "c3.large", "c3.xlarge", "c3.2xlarge", "c3.4xlarge", "c3.8xlarge",
+                          "g2.2xlarge", "g2.8xlarge", 
+                          "r3.large", "r3.xlarge", "r3.2xlarge", "r3.4xlarge", "r3.8xlarge",
+                          "i2.xlarge", "i2.2xlarge", "d2.xlarge", "d2.2xlarge", "d2.4xlarge", "d2.8xlarge"]
+
+    },
+    "EC2HostAMI": {
+      "Description": "The AMI to use for our EC2 instances",
+      "Type": "String",
+      "Default": "ami-a10897d6"
+    },
+    "VpcSubnet1ACidr": {
+      "Description": "The Cidr for subnet 1A",
+      "Type": "String"
+    },
+
+    "VpcSubnet1BCidr": {
+      "Description": "The Cidr for subnet 1B",
+      "Type": "String"
+    },
+    "VpcSubnet1CCidr": {
+      "Description": "The Cidr for subnet 1C",
+      "Type": "String"
+    },
+    "PuppetEnv": {
+      "Description": "The name of the Puppet environment to run in this instance",
+      "Type": "String",
+      "Default": "development"
+    },
+    "GithubPrivateKey": {
+      "Description": "A private key that can be used to access the Puppet code in Github",
+      "Type": "String"
+    }
+  },
+
+  "Resources": {
+    "DemoVPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": { "Ref": "InternalCidr"},
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "Tags": [ 
+            { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "VPC for", {"Ref": "Environment"}, "Environment" ] ]}},
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+     "EuWest1ASubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": { "Ref": "VpcSubnet1ACidr"},
+        "AvailabilityZone": "eu-west-1a",
+        "VpcId": {
+          "Ref": "DemoVPC"
+        },
+        "Tags": [ 
+            { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "eu-west-1a for", {"Ref": "Environment"}, "Environment" ] ]}},
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+    "EuWest1BSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": { "Ref": "VpcSubnet1BCidr"},
+        "AvailabilityZone": "eu-west-1b",
+        "VpcId": {
+          "Ref": "DemoVPC"
+        },
+        "Tags": [ 
+            { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "eu-west-1b for", {"Ref": "Environment"}, "Environment" ] ]}},
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+    "EuWest1CSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": { "Ref": "VpcSubnet1CCidr"},
+        "AvailabilityZone": "eu-west-1c",
+        "VpcId": {
+          "Ref": "DemoVPC"
+        },
+        "Tags": [ 
+            { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "eu-west-1c for", {"Ref": "Environment"}, "Environment" ] ]}},
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [ 
+            { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "gateway for", {"Ref": "Environment"}, "Environment" ] ]}},
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+    "GatewayToInternet" : {
+       "Type" : "AWS::EC2::VPCGatewayAttachment",
+       "Properties" : {
+         "VpcId" : { "Ref" : "DemoVPC" },
+         "InternetGatewayId" : { "Ref" : "InternetGateway" }
+       }
+    },
+    "PublicRouteTable" : {
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : { "Ref" : "DemoVPC" },
+        "Tags" : [
+          { "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+          { "Key" : "Network", "Value" : "Public" }
+        ]
+      }
+    },
+
+    "PublicRoute" : {
+      "Type" : "AWS::EC2::Route",
+      "DependsOn" : "GatewayToInternet",
+      "Properties" : {
+        "RouteTableId" : { "Ref" : "PublicRouteTable" },
+        "DestinationCidrBlock" : "0.0.0.0/0",
+        "GatewayId" : { "Ref" : "InternetGateway" }
+      }
+    },
+
+    "PublicSubnetRouteTableAssociation1" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "EuWest1ASubnet" },
+        "RouteTableId" : { "Ref" : "PublicRouteTable" }
+      }
+    },
+    "PublicSubnetRouteTableAssociation2" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "EuWest1BSubnet" },
+        "RouteTableId" : { "Ref" : "PublicRouteTable" }
+      }
+    },
+    "DHCPOptions": {
+      "Type": "AWS::EC2::DHCPOptions",
+      "Properties": {
+        "DomainName": "eu-west-1.compute.internal",
+        "DomainNameServers": [
+          "AmazonProvidedDNS"
+        ],
+        "Tags": [ 
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+    "NetworkAcl": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "DemoVPC"
+        },
+        "Tags": [ 
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+    "RouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "DemoVPC"
+        },
+        "Tags": [ 
+            { "Key" : "Demo::Environment", "Value" : { "Ref" : "Environment"} },
+            { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      }
+    },
+    
+    "ExternalNetworkSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": { "Ref": "DemoVPC" },
+        "GroupDescription": "Rules for traffic inbound and outbound from our network",
+        "SecurityGroupIngress": [
+          
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": { "Ref": "ExternalCidr"}
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": { "Ref": "ExternalCidr"}
+          }
+          ],
+          "SecurityGroupEgress": [
+            {
+              "IpProtocol": "-1",
+              "CidrIp": "0.0.0.0/0"
+            }
+          ]
+      }
+    },
+    "VpcInternalSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "VpcId": { "Ref": "DemoVPC"},
+        "GroupDescription": "Rules for traffic between instances inside the VPC",
+        "SecurityGroupIngress": [
+         
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": { "Ref": "InternalCidr"}
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "GlobalAclEntry": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "GlobalAclInboundEntry": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "101",
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "VPCGatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "DemoVPC"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "DHCPOptionsAssociation": {
+      "Type": "AWS::EC2::VPCDHCPOptionsAssociation",
+      "Properties": {
+        "VpcId": {
+          "Ref": "DemoVPC"
+        },
+        "DhcpOptionsId": {
+          "Ref": "DHCPOptions"
+        }
+      }
+    },
+    
+    "PuppetmasterEC2Instance": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+      "AWS::CloudFormation::Init": {
+        "configSets": {
+           "default": ["HostName", "Packages", "Keys", "Clone"]
+        },
+        "config": {},
+        "Packages": {
+          "packages": {
+              "yum": {
+                  "puppet3": ["3.7.4"],
+                  "git": ["2.1.0"]
+              },
+              "rubygems": {
+                "r10k": ["2.0.1"],
+                "aws-sdk": []
+              }
+            }
+          },
+        "Keys": {
+          "files": {
+              "/root/.ssh/id_rsa": {
+                "content": { "Ref": "GithubPrivateKey" },
+                "owner": "root",
+                "mode": "0400"
+              }
+            },
+            "commands": {
+                "disableStrictHosts": {
+                  "command": "/bin/echo -e \"Host github.com\n\tStrictHostKeyChecking no\n\" >> /root/.ssh/config"
+                }
+              }
+          },
+          "Clone": {
+            "commands" : {
+              "clonerepo": {
+                "command": "/usr/bin/git clone git@github.com:georgecodes/demo_puppet_bootstrap.git",
+                "cwd": "/tmp" 
+              },
+              "copyfile": {
+                "command": "/usr/bin/puppet apply --modulepath /tmp/demo_puppet_bootstrap -e 'include puppetmaster'"
+              }
+            }
+          },
+        "HostName" :{
+          "commands": {
+              "run": {
+                "command" : "/bin/hostname $HOSTNAME",
+                "env" : { "HOSTNAME" : "puppetmaster.example.com" }
+              } 
+            }
+          }
+        }
+    },
+      "Properties": {
+        "UserData": {
+          "Fn::Base64": {
+              "Fn::Join": [
+                "",
+                [
+                  "#!/bin/bash\n",
+                  "/opt/aws/bin/cfn-init --region ",
+                  {
+                      "Ref": "AWS::Region"
+                  },
+                  " -s ",
+                  {
+                      "Ref": "AWS::StackName"
+                  },
+                  " -r PuppetmasterEC2Instance\n"
+                ]
+              ]
+          }
+        },
+        "IamInstanceProfile": "cloudformationlookup",
+        "AvailabilityZone": "eu-west-1a",
+        "DisableApiTermination": "false",
+        "InstanceInitiatedShutdownBehavior": "stop",
+        "InstanceType": { "Ref": "StandardInstanceType" },
+        "KeyName": { "Ref" : "KeyName" },
+        "ImageId": { "Ref": "EC2HostAMI" },
+        "Monitoring": "false",
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "EuWest1ASubnet"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "172.16.0.91",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              {
+                "Ref": "ExternalNetworkSecurityGroup"
+              },
+              {
+                "Ref": "VpcInternalSecurityGroup"
+              }
+            ],      
+            "AssociatePublicIpAddress": "true"
+          }
+        ],
+        "Tags": [
+          { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "Puppetmaster for", {"Ref": "Environment"}, "Environment" ] ]}},
+          { "Key": "Type", "Value": "Puppetmaster instance"},
+          { "Key": "Environment", "Value": { "Ref": "Environment"} },
+          { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      },
+      "DependsOn": ["ExternalNetworkSecurityGroup", "VpcInternalSecurityGroup"]
+    },
+    "WebServerHost1": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "packages": {
+                "yum": {
+                    "puppet3": []
+                }
+            },
+            "commands": {
+              "hostname": {
+                "command" : "/bin/hostname $HOSTNAME",
+                "env" : { "HOSTNAME" : "web1.example.com" }
+              },
+              "puppetmaster":{
+                "command": "/bin/echo \"$PuppetMasterPrivateIP\" puppet >> /etc/hosts",
+                "env": { "PuppetMasterPrivateIP": { "Fn::GetAtt" : [ "PuppetmasterEC2Instance", "PrivateIp"]}}
+              }
+             },
+
+             "files": {
+              "/etc/puppet/puppet.conf": {
+                "content": { "Fn::Join": ["", [
+                  "[main]\n",
+                  "# The Puppet log directory.\n",
+                  "# The default value is '$vardir/log'.\n",
+                  "logdir = /var/log/puppet\n\n",
+                  "# Where Puppet PID files are kept.\n",
+                  "# The default value is '$vardir/run'.\n",
+                  "rundir = /var/run/puppet\n\n",
+                  "# Where SSL certificates are kept.\n",
+                  "# The default value is '$confdir/ssl'.\n",
+                  "ssldir = $vardir/ssl\n",
+                  "environment = DEMO_", { "Ref": "PuppetEnv"}, "\n\n",
+                  "[agent]\n",
+                  "# The file in which puppetd stores a list of the classes\n",
+                  "# associated with the retrieved configuratiion.  Can be loaded in\n",
+                  "# the separate ``puppet`` executable using the ``--loadclasses``\n",
+                  "# option.\n",
+                  "# The default value is '$confdir/classes.txt'.\n",
+                  "classfile = $vardir/classes.txt\n",
+                  "# Where puppetd caches the local configuration.  An\n",
+                  "# extension indicating the cache format is added automatically.\n",
+                  "# The default value is '$confdir/localconfig'.\n",
+                  "localconfig = $vardir/localconfig\n",
+                  "certname=web1.example.com\n",
+                  "runinterval = 1m\n\n",
+                  "[master]\n",
+                  "certname=puppetmaster.example.com\n"
+
+                ]]}
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "puppet": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": "/etc/puppet/puppet.conf",
+                  "packages": { "yum" : ["puppet3"]}
+                }
+              }
+           }
+          }
+        }
+      },
+      "Properties": {
+        "AvailabilityZone": "eu-west-1a",
+        "DisableApiTermination": "false",
+        "InstanceInitiatedShutdownBehavior": "stop",
+        "InstanceType": { "Ref": "StandardInstanceType" },
+        "KeyName": { "Ref" : "KeyName" },
+        "ImageId": { "Ref": "EC2HostAMI" },
+        "Monitoring": "false",
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "EuWest1ASubnet"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "172.16.0.21",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              {
+                "Ref": "ExternalNetworkSecurityGroup"
+              },
+              {
+                "Ref": "VpcInternalSecurityGroup"
+              }
+            ],      
+            "AssociatePublicIpAddress": "true"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash\n",
+                "/opt/aws/bin/cfn-init --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                " -s ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " -r WebServerHost1\n"
+              ]
+            ]
+          }
+        },
+        "Tags": [
+          { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "Web node #1 for", {"Ref": "Environment"}, "Environment" ] ]}},
+          { "Key": "Type", "Value": "Webserver instance #1"},
+          { "Key": "Demo::Environment", "Value": { "Ref": "Environment"}},
+          { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      },
+      "DependsOn": ["ExternalNetworkSecurityGroup", "VpcInternalSecurityGroup"]
+    },
+    "WebServerHost2": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "config": {
+            "packages": {
+                "yum": {
+                    "puppet3": []
+                }
+            },
+            "commands": {
+              "hostname": {
+                "command" : "/bin/hostname $HOSTNAME",
+                "env" : { "HOSTNAME" : "web2.example.com" }
+              },
+              "puppetmaster":{
+                "command": "/bin/echo \"$PuppetMasterPrivateIP\" puppet >> /etc/hosts",
+                "env": { "PuppetMasterPrivateIP": { "Fn::GetAtt" : [ "PuppetmasterEC2Instance", "PrivateIp"]}}
+              }
+             },
+
+             "files": {
+              "/etc/puppet/puppet.conf": {
+                "content": { "Fn::Join": ["", [
+                  "[main]\n",
+                  "# The Puppet log directory.\n",
+                  "# The default value is '$vardir/log'.\n",
+                  "logdir = /var/log/puppet\n\n",
+                  "# Where Puppet PID files are kept.\n",
+                  "# The default value is '$vardir/run'.\n",
+                  "rundir = /var/run/puppet\n\n",
+                  "# Where SSL certificates are kept.\n",
+                  "# The default value is '$confdir/ssl'.\n",
+                  "ssldir = $vardir/ssl\n",
+                  "environment = DEMO_", { "Ref": "PuppetEnv"}, "\n\n",
+                  "[agent]\n",
+                  "# The file in which puppetd stores a list of the classes\n",
+                  "# associated with the retrieved configuratiion.  Can be loaded in\n",
+                  "# the separate ``puppet`` executable using the ``--loadclasses``\n",
+                  "# option.\n",
+                  "# The default value is '$confdir/classes.txt'.\n",
+                  "classfile = $vardir/classes.txt\n",
+                  "# Where puppetd caches the local configuration.  An\n",
+                  "# extension indicating the cache format is added automatically.\n",
+                  "# The default value is '$confdir/localconfig'.\n",
+                  "localconfig = $vardir/localconfig\n",
+                  "certname=web1.example.com\n",
+                  "runinterval = 1m\n\n",
+                  "[master]\n",
+                  "certname=web2.example.com\n"
+
+                ]]}
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "puppet": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": "/etc/puppet/puppet.conf",
+                  "packages": { "yum" : ["puppet3"]}
+                }
+              }
+           }
+          }
+        }
+      },
+      "Properties": {
+        "AvailabilityZone": "eu-west-1a",
+        "DisableApiTermination": "false",
+        "InstanceInitiatedShutdownBehavior": "stop",
+        "InstanceType": { "Ref": "StandardInstanceType" },
+        "KeyName": { "Ref" : "KeyName" },
+        "ImageId": { "Ref": "EC2HostAMI" },
+        "Monitoring": "false",
+        "NetworkInterfaces": [
+          {
+            "DeleteOnTermination": "true",
+            "DeviceIndex": 0,
+            "SubnetId": {
+              "Ref": "EuWest1ASubnet"
+            },
+            "PrivateIpAddresses": [
+              {
+                "PrivateIpAddress": "172.16.0.31",
+                "Primary": "true"
+              }
+            ],
+            "GroupSet": [
+              {
+                "Ref": "ExternalNetworkSecurityGroup"
+              },
+              {
+                "Ref": "VpcInternalSecurityGroup"
+              }
+            ],      
+            "AssociatePublicIpAddress": "true"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash\n",
+                "/opt/aws/bin/cfn-init --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                " -s ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " -r WebServerHost2\n"
+              ]
+            ]
+          }
+        },
+        "Tags": [
+          { "Key": "Name", "Value": { "Fn::Join" : [" ", [ "Web node #2 for", {"Ref": "Environment"}, "Environment" ] ]}},
+          { "Key": "Type", "Value": "Webserver instance #2"},
+          { "Key": "Demo::Environment", "Value": { "Ref": "Environment"}},
+          { "Key" : "Demo::CreatedBy", "Value": { "Ref" : "CreatedBy"} }
+        ]
+      },
+      "DependsOn": ["ExternalNetworkSecurityGroup", "VpcInternalSecurityGroup"]
+    },
+     "LoadBalancer" : {
+      "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "SecurityGroups": [
+          { "Ref": "VpcInternalSecurityGroup"},
+          { "Ref": "ExternalNetworkSecurityGroup"}
+          ],
+        "Scheme": "internet-facing",
+        "Subnets": [
+          { "Ref": "EuWest1ASubnet" },
+          { "Ref": "EuWest1BSubnet" },
+          { "Ref": "EuWest1CSubnet" }    
+        ],
+        "CrossZone" : "true",
+        "Instances" : [ { "Ref" : "WebServerHost1" },{ "Ref" : "WebServerHost2" } ],
+        "Listeners" : [ {
+            "Protocol": "HTTP",
+            "LoadBalancerPort": "8080",
+            "InstanceProtocol": "HTTP",
+            "InstancePort": "8080"
+          }
+        ],
+        
+        "HealthCheck" : {
+          "Target" : "TCP:8080",
+          "Timeout": "5",
+          "Interval": "30",
+          "UnhealthyThreshold" : "2",
+          "HealthyThreshold" : "10"
+        }
+      }
+    }
+
+  },
+
+  "Outputs" : {
+    "PuppetmasterPublicDNSName" : {
+      "Description": "The DNSName of thePuppetmaster",  
+      "Value" : { "Fn::GetAtt" : [ "PuppetmasterEC2Instance", "PublicDnsName" ]}
+    },
+    "Web1InstancePublicDNS" : {
+      "Description": "The DNSName of the first web node instance",  
+      "Value" : { "Fn::GetAtt" : [ "WebServerHost1", "PublicDnsName" ]}
+    },
+    "Web2InstancePublicDNS" : {
+      "Description": "The DNSName of the second web node instance",  
+      "Value" : { "Fn::GetAtt" : [ "WebServerHost2", "PublicDnsName" ]}
+    },
+    "LoadBalancerDNSName": {
+      "Description": "The DNS name for the internet-facing load balancer",
+      "Value" : { "Fn::GetAtt" : [ "LoadBalancer", "DNSName" ]}
+    }
+
+  }
+
+}

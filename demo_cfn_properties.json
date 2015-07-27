@@ -1,0 +1,45 @@
+[
+  {
+    "ParameterKey" : "KeyName",
+    "ParameterValue" : "gmcintosh"
+  },
+  {
+    "ParameterKey" : "Environment",
+    "ParameterValue" : "ghm-sandbox"
+  },
+  {
+    "ParameterKey": "PuppetEnv",
+    "ParameterValue": "development"
+  },
+  {
+    "ParameterKey" : "CreatedBy",
+    "ParameterValue" : "gmcintosh"
+  },
+  {
+    "ParameterKey" : "StandardInstanceType",
+    "ParameterValue" : "t2.micro"
+  },
+  {
+    "ParameterKey": "ExternalCidr",
+    "ParameterValue": "0.0.0.0/0"
+  },
+  {
+    "ParameterKey": "InternalCidr",
+    "ParameterValue": "172.16.0.0/16"
+  },
+  {
+    "ParameterKey": "VpcSubnet1ACidr",
+    "ParameterValue": "172.16.0.0/24"
+  },
+  {
+    "ParameterKey": "VpcSubnet1BCidr",
+    "ParameterValue": "172.16.1.0/24"
+  },
+  {
+    "ParameterKey": "VpcSubnet1CCidr",
+    "ParameterValue": "172.16.2.0/24"
+  },
+  {
+    "ParameterKey": "GithubPrivateKey",
+    "ParameterValue": <paste your private key here> }
+]
